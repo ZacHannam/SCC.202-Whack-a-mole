@@ -1,0 +1,293 @@
+<!-- https://github.com/ZacHannam/SCC.202-ERTE-Coursework -->
+<!DOCTYPE html>
+<html>
+	<style>
+		html, body {
+			height: 100%;
+			background-color: #89cff0;
+		}
+
+		html {
+			display: table;
+			margin: auto;
+		}
+
+		body {
+			display: table-cell;
+			vertical-align: middle;
+		}
+
+		canvas {
+			background-color: #ffffff;
+		}
+
+		table {
+			width: 100%
+		}
+
+		td, th {
+			text-align: center;
+		}
+
+	</style>
+	<head>
+		<title>Whack-a-mole Game</title>
+	</head>
+	<body>
+		<header><center>
+			<h3>SCC.202 - Coursework</h3>
+
+			<div id = "inner">
+			<table id = "table">
+				<tr>
+					<th>Round</th>
+					<th>Score</th>
+					<th>Timer</th>
+				</tr>
+				<tr>
+					<td id = "round">1</td>
+					<td id = "score">0</td>
+					<td id = "timer">0</td>
+				</tr>
+			</table>
+			</div>
+
+
+			<canvas id="canvas" width="1024" height="768" style="border:1px solid #d3d3d3;">
+			Your browser does not support the HTML canvas tag.</canvas>
+
+			</center></header>
+
+		<script>
+
+			const height = 768
+			const width = 1024
+			const circleSizes = [10, 30, 50];
+
+			const centreCirclePosX = width/2;
+			const centreCirclePosY = height/2;
+			const centreCircleSize = 30;
+			const clockUpdate = 10;
+
+			const maxRandomStartTime = 3000;
+
+			var canvas = document.getElementById('canvas');
+			var context = canvas.getContext('2d');
+
+			var activeCircleSize = 0;
+			var activeCirclePositionX = 0;
+			var activeCirclePositionY = 0;
+
+
+
+			var gameState = 0;
+			var timeoutRoundTimerID;
+			var timeoutClockRunOutID;
+			var intervalTimerUpdater;
+			var currentRound = 0;
+			var score = 0;
+			var numberOfRounds = 10;
+
+
+			canvas.addEventListener('mousedown', function(e) {
+				onClick(e)
+			})
+
+			onClick(null);
+
+			function getMappedTimeLeft() {
+				return Math.floor((((numberOfRounds - currentRound) / numberOfRounds) * 5000) + 250);
+			}
+
+			function onClick(event) {
+
+				var rect, x, y;
+				if(event != null) {
+					rect = canvas.getBoundingClientRect()
+					x = event.clientX - rect.left
+					y = event.clientY - rect.top
+				}
+
+				if(gameState == 0) {
+					drawCenterCircle("red")
+
+					gameState++;
+
+				}
+				else if(gameState == 1) {
+
+					if (!clickCentreCircle(x, y)) {
+						return;
+					}
+
+					drawCenterCircle("green");
+					gameState++;
+
+					var randomStartTimeout = Math.floor(Math.random() * maxRandomStartTime);
+					timeoutRoundTimerID = setTimeout(showCircleTimer, randomStartTimeout);
+				}
+				else if(gameState == 2) {
+
+				}
+
+				if(gameState == 3) {
+
+					drawRandomCircle("green");
+
+					var timeToClick = getMappedTimeLeft();
+					var timeRemaining = timeToClick;
+
+					timeoutClockRunOutID = setTimeout(showCircleTimeoutTimer, timeToClick);
+					updateTimer(0);
+					intervalTimerUpdater = setInterval(function () {
+						timeRemaining-=clockUpdate;
+						updateTimer(timeRemaining);
+					}, clockUpdate);
+					gameState++;
+
+				}
+
+				else if(gameState == 4) {
+					if(!clickActiveCircle(x, y)) {
+						return;
+					}
+
+					clearTimeout(timeoutClockRunOutID);
+					score++;
+					updateScore();
+					gameState+=2;
+				}
+
+				if(gameState == 5) { // Failed round
+
+					gameState++;
+
+				}
+
+				if(gameState == 6) {
+
+					clearLastCircle();
+					clearInterval(intervalTimerUpdater);
+					updateTimer(0);
+
+					if(currentRound == numberOfRounds - 1) {
+
+						gameState = 8;
+
+					} else {
+						gameState = 7;
+
+					}
+				}
+
+				if(gameState == 7) {
+					currentRound++;
+					updateRound();
+					gameState = 0;
+					onClick(null);
+				}
+
+				if(gameState == 8) {
+
+					document.getElementById("table").remove();
+					document.getElementById("canvas").remove();
+					document.getElementById("inner").innerHTML = "<h1>Score: " + score.toString() + "/" + numberOfRounds.toString() + "</h1>"
+
+				}
+
+			}
+
+
+			function clearCanvas() {
+				context.rect(0, 0, width, height);
+				context.fillStyle = "white";
+				context.fill();
+			}
+
+
+			function drawCircle(paramColor, centrePosX, centrePosY, circleSize) {
+				context.beginPath();
+				context.arc(centrePosX, centrePosY, circleSize/2 ,0,2*Math.PI);
+				context.closePath();
+				context.fillStyle = paramColor;
+				context.fill();
+			}
+		
+			function drawCenterCircle(paramColor) {
+				drawCircle(paramColor, centreCirclePosX, centreCirclePosY, centreCircleSize);
+			}
+
+			function drawRandomCircle(paramColor) {
+				const circleWidth = circleSizes[Math.floor(Math.random() * circleSizes.length)];
+				const availableWidth =  width - circleWidth;
+				const availableHeight = height - circleWidth;
+
+				var randomPosX, randomPosY, distanceBetweenCircles;
+				do {
+					randomPosX = Math.floor(Math.random() * availableWidth) + Math.floor(circleWidth / 2);
+					randomPosY = Math.floor(Math.random() * availableHeight)+ Math.floor(circleWidth / 2);
+
+					distanceBetweenCircles = Math.sqrt((randomPosX - centreCirclePosX) ** 2 + (randomPosY - centreCirclePosY) ** 2);
+				} while(distanceBetweenCircles <= centreCircleSize + circleWidth);
+
+				drawCircle(paramColor, randomPosX, randomPosY, circleWidth);
+				activeCircleSize = circleWidth;
+				activeCirclePositionX = randomPosX;
+				activeCirclePositionY = randomPosY;
+
+			}
+
+			function clearLastCircle() {
+				drawCircle("white", activeCirclePositionX, activeCirclePositionY, activeCircleSize * 1.2);
+			}
+
+			function clickCircle(clickPositionX, clickPositionY, circlePositionX, circlePositionY, circleSize) {
+				if(Math.sqrt((clickPositionX - circlePositionX) ** 2 + (clickPositionY - circlePositionY) ** 2) <= circleSize) {
+					return 1;
+				}
+				return 0;
+			}
+
+			function clickCentreCircle(clickPositionX, clickPositionY) {
+				return clickCircle(clickPositionX, clickPositionY, centreCirclePosX, centreCirclePosY, centreCircleSize);
+			}
+
+			function clickActiveCircle(clickPositionX, clickPositionY) {
+				return clickCircle(clickPositionX, clickPositionY, activeCirclePositionX, activeCirclePositionY, activeCircleSize);
+			}
+
+			function showCircleTimer() {
+
+				gameState++;
+				onClick(null);
+
+			}
+
+			function showCircleTimeoutTimer() {
+
+				gameState++;
+				onClick(null);
+
+			}
+
+			function updateScore() {
+				var data = document.getElementById('score');
+				data.innerHTML = score.toString();
+			}
+
+			function updateRound() {
+				var data = document.getElementById('round');
+				data.innerHTML = (currentRound + 1).toString();
+			}
+
+			function updateTimer(value) {
+				var data = document.getElementById('timer');
+				data.innerHTML = value.toString();
+			}
+
+		</script>	
+
+
+	</body>
+</html>
+
