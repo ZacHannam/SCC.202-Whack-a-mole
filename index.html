@@ -86,7 +86,15 @@
 			var intervalTimerUpdater;
 			var currentRound = 0;
 			var score = 0;
-			var numberOfRounds = 60;
+			var numberOfRounds = 5;
+
+            // [max time, time, object size, distance]
+            var times = {};
+            var timer = 0;
+
+            function getDistance() {
+                return Math.round(Math.sqrt((activeCirclePositionY - centreCirclePosX) ** 2 + (activeCirclePositionY - centreCirclePosY) ** 2));
+            }
 
 
 			canvas.addEventListener('mousedown', function(e) {
@@ -96,7 +104,7 @@
 			onClick(null);
 
 			function getMappedTimeLeft() {
-				return Math.floor((((numberOfRounds - currentRound) / numberOfRounds) * 5000) + 250);
+				return Math.floor((((numberOfRounds - (currentRound + 1)) / numberOfRounds) * 5000) + 250);
 			}
 
 			function onClick(event) {
@@ -128,6 +136,8 @@
 				}
 				else if(gameState == 2) {
 
+
+
 				}
 
 				if(gameState == 3) {
@@ -138,6 +148,7 @@
 					var timeRemaining = timeToClick;
 
 					timeoutClockRunOutID = setTimeout(showCircleTimeoutTimer, timeToClick);
+                    timer = new Date().getTime();
 					updateTimer(0);
 					intervalTimerUpdater = setInterval(function () {
 						timeRemaining-=clockUpdate;
@@ -152,6 +163,11 @@
 						return;
 					}
 
+                    const d = new Date().getTime();
+                    let time = d - timer;
+
+                    times[currentRound+1] = [time, getMappedTimeLeft(), activeCircleSize, getDistance()];
+
 					clearTimeout(timeoutClockRunOutID);
 					score++;
 					updateScore();
@@ -161,6 +177,8 @@
 				if(gameState == 5) { // Failed round
 
 					gameState++;
+
+                    times[currentRound+1] = ['Failed', getMappedTimeLeft(), activeCircleSize, getDistance()];
 
 				}
 
@@ -189,9 +207,21 @@
 
 				if(gameState == 8) {
 
+                    var timesAsString = "";
+
+                    for (const [key, value] of Object.entries(times)) {
+                        timesAsString += "<tr><td>" + key + "</td><td>" + value[0] + "</td><td>" + value[1] + "</td><td>" + value[2] + "</td><td>" + value[3] + "</td></tr>";
+                    }
+
 					document.getElementById("table").remove();
 					document.getElementById("canvas").remove();
-					document.getElementById("inner").innerHTML = "<h1>Score: " + score.toString() + "/" + numberOfRounds.toString() + "</h1>"
+					document.getElementById("inner").innerHTML = "<h1>Score: " + score.toString() + "/" + numberOfRounds.toString() + "</h1>" +
+                        "<br>" +
+                        '<table id = "table">' +
+                        "<tr>" +
+                        "<td>Round</td><td>Time (ms)</td><td>Max Round Time (ms)</td><td>Circle Size (px)</td><td>Circle Distance (px)</td>"+
+                        "</tr>" + timesAsString +
+                        "</table>";
 
 				}
 
